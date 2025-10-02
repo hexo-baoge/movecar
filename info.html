@@ -26,13 +26,18 @@
       letter-spacing: 5px;
       text-transform: uppercase;
   }
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+  }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="row">
       <div class="col-md-6 offset-md-3">
-        <div class="car" style="background: rgb(75, 92, 196); box-shadow: rgb(75, 92, 196) 0px 0px 2px 4px; color: rgb(255, 255, 255);">
+        <div class="car">
           <span class="car-province">京</span><span class="car-letter">A</span><span class="car-dot">•</span><span class="car-number">12345</span>
       </div>
        <div id="cardContainer"></div>
@@ -43,45 +48,74 @@
   <script>
     // 从 URL 中获取车牌号和手机号
     const urlParams = new URLSearchParams(window.location.search);
-    const plateNumber = urlParams.get('plateNumber');
-    const phoneNumber = urlParams.get('phoneNumber');
+    const plateNumber = urlParams.get('plateNumber') || '未知车牌';
+    const phoneNumber = urlParams.get('phoneNumber') || '未知号码';
 
- // 找到显示车牌号的各个元素
- const carProvince = document.querySelector('.car-province');
- const carLetter = document.querySelector('.car-letter');
- const carNumber = document.querySelector('.car-number');
+    // 填充车牌号
+    const carProvince = document.querySelector('.car-province');
+    const carLetter = document.querySelector('.car-letter');
+    const carNumber = document.querySelector('.car-number');
+    if (plateNumber && plateNumber.length >= 3) {
+        carProvince.textContent = plateNumber.charAt(0);
+        carLetter.textContent = plateNumber.charAt(1);
+        carNumber.textContent = plateNumber.slice(2);
+    }
 
- // 将从 URL 中获取到的车牌号填充到相应的位置
- if (plateNumber) {
-     carProvince.textContent = plateNumber.charAt(0); // 假设第一个字符为省份
-     carLetter.textContent = plateNumber.charAt(1); // 假设第二个字符为字母
-     carNumber.textContent = plateNumber.slice(2); // 从第三个字符开始为数字
- }
-
-    // 生成卡片内容
+    // 生成卡片内容（统一按钮颜色）
     const cardContent = `
       <div class="card">
         <div class="card-body">
           <h1 class="card-title">挪车信息</h1>
-          <h2 class="card-text">临时停靠，请多关照</p>
+          <h2 class="card-text">临时停靠，请多关照</h2>
           <p class="card-text">车牌号: ${plateNumber}</p>
           <p class="card-text">联系电话: ${phoneNumber}</p>
-          <button type="button" class="btn btn-primary" onclick="callNumber('${phoneNumber}')">一键呼叫</button>
+          <div class="button-group">
+            <button type="button" class="btn btn-primary" onclick="callNumber('${phoneNumber}')">一键呼叫</button>
+            <button type="button" class="btn btn-primary" onclick="sendSms('${phoneNumber}', '${plateNumber}')">短信通知</button>
+          </div>
         </div>
       </div>
     `;
-
-    // 将卡片添加到页面中
-    const cardContainer = document.getElementById('cardContainer');
-    cardContainer.innerHTML = cardContent;
+    document.getElementById('cardContainer').innerHTML = cardContent;
 
     // 一键呼叫函数
-    function callNumber(phoneNumber) {
-      window.location.href = 'tel:' + phoneNumber;
+    function callNumber(phone) {
+      if (!phone || phone === '未知号码') {
+        alert('未获取到有效手机号');
+        return;
+      }
+      window.location.href = 'tel:' + phone.replace(/\D/g, ''); // 过滤非数字字符
+    }
+
+    // 短信通知函数（优化兼容性）
+    function sendSms(phone, plate) {
+      if (!phone || phone === '未知号码') {
+        alert('未获取到有效手机号');
+        return;
+      }
+      // 清理手机号（移除非数字字符）
+      const cleanPhone = phone.replace(/\D/g, '');
+      // 短信内容
+      const message = `您好，您的车辆（${plate}）可能影响他人通行，请尽快挪车，感谢配合！`;
+      // 编码短信内容（处理特殊字符）
+      const encodedMsg = encodeURIComponent(message);
+      
+      // 尝试唤起短信应用
+      try {
+        // 标准smsto协议（大部分手机支持）
+        window.location.href = `smsto:${cleanPhone}?body=${encodedMsg}`;
+        
+        // 兼容部分安卓设备的备用方案
+        setTimeout(() => {
+          window.location.href = `sms:${cleanPhone}?body=${encodedMsg}`;
+        }, 500);
+      } catch (e) {
+        alert('无法唤起短信应用，请手动发送');
+        console.error('短信功能错误：', e);
+      }
     }
   </script>
 
-  <!-- Bootstrap JS (optional) -->
   <script src="https://jsd.quickso.cn/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
 </body>
 </html>
